@@ -1,0 +1,92 @@
+from telegram import Update
+from telegram.ext import Application, CommandHandler, ContextTypes
+from datetime import datetime
+import requests
+import time
+
+# ================== Settings ==================
+with open("bot_token.txt", "r") as f:
+    TOKEN = f.read().strip()
+
+user_mode = {}
+
+ASSETS = {
+    "EURUSD_otc": "EURUSD",
+    "GBPUSD_otc": "GBPUSD",
+    "USDJPY_otc": "USDJPY",
+    "AUDUSD_otc": "AUDUSD",
+    "USDCAD_otc": "USDCAD",
+    "EURGBP_otc": "EURGBP",
+    "EURJPY_otc": "EURJPY",
+    "GBPJPY_otc": "GBPJPY",
+    "AUDJPY_otc": "AUDJPY",
+    "NZDUSD_otc": "NZDUSD",
+    "USDCHF_otc": "USDCHF",
+    "EURCHF_otc": "EURCHF"
+}
+
+# ================== Indicators ==================
+def calculate_ema(prices, period):
+    if len(prices) < period:
+        return None
+    k = 2 / (period + 1)
+    ema = sum(prices[:period]) / period
+    for price in prices[period:]:
+        ema = price * k + ema * (1 - k)
+    return ema
+
+def calculate_rsi(prices, period=14):
+    if len(prices) < period + 1:
+        return None
+    gains, losses = [], []
+    for i in range(1, len(prices)):
+        change = prices[i] - prices[i-1]
+        gains.append(max(change, 0))
+        losses.append(max(-change, 0))
+    avg_gain = sum(gains[-period:]) / period
+    avg_loss = sum(losses[-period:]) / period
+    if avg_loss == 0:
+        return 100.0
+    rs = avg_gain / avg_loss
+    return 100 - (100 / (1 + rs))
+
+def calculate_macd(prices):
+    if len(prices) < 26:
+        return None, None
+    ema12 = calculate_ema(prices, 12)
+    ema26 = calculate_ema(prices, 26)
+    if ema12 is None or ema26 is None:
+        return None, None
+    macd_line = ema12 - ema26
+    signal_line = macd_line * 0.15
+    return macd_line, signal_line
+
+# ================== Bot Commands ==================
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = (
+        "🤖 *Pocket Option Pro Signal Bot*\n\n"
+        "Commands:\n"
+        "/start - Start\n"
+        "/help - Help\n"
+        "/mode demo - Demo mode\n"
+        "/mode real - Real mode\n"
+        "/assets - List of assets\n"
+        "/signal - Get signal (default EURUSD_otc)\n"
+        "/signal GBPUSD_otc - Signal for specific asset"
+    )
+    await update.message.reply_text(text, parse_mode="Markdown")
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = (
+        "📖 *Pro Multi-Indicator System*\n\n"
+        "Indicators used:\n"
+        "• EMA 9 & EMA 21\n"
+        "• RSI 14\n"
+        "• MACD\n\n"
+        "Signal is generated only when at least 2 indicators agree."
+    )
+    await update.message.reply_text(text, parse_mode="Markdown")
+
+async def mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    if not context.args or context.argsmain()
